@@ -1,0 +1,33 @@
+{
+  "dataset": "HaluEval QA",
+  "source": "https://github.com/RUCAIBox/HaluEval",
+  "seed": 42,
+  "classifier_pairs_sampled": 1000,
+  "classifier_expanded_answer_instances": 2000,
+  "test_size": 0.2,
+  "split_group": "question+knowledge; paired answers stay in same partition",
+  "tfidf": {
+    "max_features": 20000,
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 2
+  },
+  "classifiers": [
+    "LogisticRegression",
+    "LinearSVC"
+  ],
+  "likelihood_model": "gpt2",
+  "likelihood_pairs": 100,
+  "likelihood_answer_instances": 200,
+  "primary_metrics": [
+    "accuracy",
+    "precision",
+    "recall",
+    "f1",
+    "AUROC",
+    "AUPRC"
+  ],
+  "note": "Recorded run settings; verify against final notebook."
+}
