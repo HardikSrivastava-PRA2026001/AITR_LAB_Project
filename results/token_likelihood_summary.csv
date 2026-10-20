@@ -1,0 +1,3 @@
+label,count,mean_negative_mean_token_log_probability,median_negative_mean_token_log_probability,std_negative_mean_token_log_probability
+Right answer,100,3.186245,2.037786,2.538088
+Hallucinated answer,100,2.150713,1.802408,1.422559
