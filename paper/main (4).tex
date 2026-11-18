@@ -1,0 +1,184 @@
+\documentclass[acmsmall,nonacm]{acmart}
+% acmsmall = ACM small single-column format; nonacm = no ACM copyright block (coursework)
+\citestyle{acmauthoryear}
+\bibliographystyle{ACM-Reference-Format}
+
+\acmJournal{CSUR}
+\acmVolume{1}
+\acmNumber{1}
+\acmArticle{1}
+\acmYear{2026}
+\acmMonth{10}
+
+\title{Evaluating Text-Based Classification and Conditional Token Likelihood for Hallucination Detection: A Small-Scale Study on HaluEval QA}
+
+\author{Hardik Srivastava}
+\affiliation{%
+  \institution{Dual Degree M.Tech--PhD, Information Technology (Robotics and AI), Indian Institute of Information Technology Allahabad}
+  \city{Prayagraj}
+  \country{India}
+}
+\email{pra2026001@iiita.ac.in}
+
+\begin{document}
+
+\begin{abstract}
+Hallucination detection is difficult because a fluent answer may be factually unsupported, while a correct answer can be phrased in many ways. This exploratory study compares two lexical classification baselines---TF--IDF with Logistic Regression and TF--IDF with a Linear Support Vector Machine (SVM)---against GPT-2 conditional candidate-answer likelihood on the question-answering (QA) portion of HaluEval. The classifier experiment samples 1,000 question--knowledge pairs and expands each into a right answer and a benchmark-provided hallucinated answer, yielding 2,000 instances. A grouped 80/20 split keeps answers from the same question--knowledge group on one side of the split. In the uploaded run, Logistic Regression achieved accuracy 0.6300, F1 0.6126, AUROC 0.6862 and AUPRC 0.6876; Linear SVM achieved accuracy 0.6375, F1 0.5983, AUROC 0.7009 and AUPRC 0.7059. GPT-2 was evaluated on 100 pairs (200 candidate answers). With character-offset answer-token selection, negative mean token log-probability produced AUROC 0.4437 and AUPRC 0.4380 in the hypothesized direction; reversing the score yielded AUROC 0.5563 and AUPRC 0.5023. These results indicate modest discrimination by the text classifiers and weak discrimination by the likelihood score in this small sample. They do not establish generalization or statistical significance. In a side-by-side comparison of the three models, TF--IDF with Linear SVM performed best on accuracy, precision, AUROC and AUPRC. Semantic entropy was not implemented.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10010147.10010178.10010179</concept_id>
+       <concept_desc>Computing methodologies~Natural language generation</concept_desc>
+       <concept_significance>500</concept_significance>
+   </concept>
+   <concept>
+       <concept_id>10010147.10010178.10010205.10010208</concept_id>
+       <concept_desc>Computing methodologies~Neural networks</concept_desc>
+       <concept_significance>300</concept_significance>
+   </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Computing methodologies~Natural language generation}
+\ccsdesc[300]{Computing methodologies~Neural networks}
+
+\keywords{hallucination detection, HaluEval, TF--IDF, Logistic Regression, Linear SVM, conditional likelihood, token log-probability, uncertainty quantification}
+
+\maketitle
+
+\section{Introduction}
+Large language models (LLMs) produce answers that are often fluent and plausible, but fluency does not guarantee factual correctness \citep{ji2023survey}. A hallucination detector attempts to identify unsupported or incorrect content, either by inspecting an answer, estimating model uncertainty, or checking claims against evidence. This is challenging because a correct answer may be uncommon or worded unexpectedly, while an incorrect answer may be highly probable under a language model.
+
+One accessible family of detectors treats the problem as supervised classification: a model learns lexical patterns associated with right and hallucinated answers. Such baselines are useful because they are inexpensive and straightforward to reproduce, but they can learn dataset-specific wording rather than factuality. A second family uses model probabilities. The probability assigned to a candidate sequence may reflect fluency, frequency, and prompt compatibility; it is not a direct truth probability. Semantic entropy is a more specialized uncertainty method that aggregates meaning-equivalent sampled generations rather than relying on one sequence's token likelihood \citep{farquhar2024semantic, kuhn2023semantic}.
+
+This project began from a broader literature-review theme of token-level uncertainty as a predictor of hallucination \citep{fadeeva2024factchecking}. To make that theme experimentally feasible within a course project, the study narrows the question to two text-classification baselines and one conditional-likelihood score on a small sample of HaluEval QA. This is a small-scale empirical comparison, not a new detection algorithm.
+
+\section{Research Question and Contributions}
+The research question is: \emph{On a sampled HaluEval QA subset, how do two TF--IDF text classifiers compare with GPT-2 conditional candidate-answer likelihood for distinguishing right answers from benchmark-provided hallucinated answers?}
+
+The study makes three limited contributions. First, it documents a paired binary classification protocol with a group-based split. Second, it compares two simple text baselines using threshold-based and ranking metrics. Third, it tests whether negative mean token log-probability provides a useful ranking signal on a smaller set of candidate answers. The intended contribution is a reproducible comparison and an honest report of weak results, not evidence that likelihood is a reliable hallucination detector.
+
+\section{Related Work}
+HaluEval was introduced as a benchmark for evaluating hallucinations in LLM outputs and includes QA, dialogue and summarization data. Its QA examples provide knowledge, a question, a right answer and a corresponding hallucinated answer, which makes paired comparisons possible \citep{li2023halueval}. However, a benchmark's label-generation procedure can introduce regularities that are not representative of all real user prompts or naturally generated errors.
+
+Farquhar et al. proposed semantic entropy as a way to estimate uncertainty over meaning-level answer classes, using multiple generations and semantic equivalence rather than treating every surface form as a distinct outcome \citep{farquhar2024semantic}. The current experiment does not implement that method: it scores supplied candidate answers using GPT-2's conditional token probabilities. Broader evaluations of uncertainty methods, including LM-Polygraph, emphasize that method performance can depend on the task, model and evaluation setup \citep{vashurin2025polygraph}. HALoGEN provides a complementary benchmark focused on factuality errors and verification of atomic claims \citep{ravichander2025halogen}. Relative to these works, this project is deliberately narrow in model, data sample and method complexity.
+
+\section{Methods}
+\subsection{Dataset and sampling}
+The experiment uses the QA portion of HaluEval. The official dataset repository describes 10,000 QA examples with fields corresponding to knowledge, question, right answer and hallucinated answer \citep{rucaiboxhalueval}. The notebook loaded 10,000 records. For the classifier experiment, 1,000 records were sampled using random seed 42. Each sampled record generated two instances: the right answer received label 0 and the hallucinated answer received label 1. This yields 2,000 instances with equal class counts by construction. The input text concatenated the question, supplied knowledge and candidate answer.
+
+The dataset is paired: the two candidate answers for a given question share the same question and knowledge. If these paired answers were randomly split independently, near-duplicate context could appear in both train and test partitions. To reduce this leakage risk, the notebook used a group split keyed by question plus knowledge, with 80\% of groups for training and 20\% for testing. The split used seed 42 and asserted that train and test group identifiers were disjoint. This split strategy does not eliminate all benchmark artifacts, but it prevents the two answers from the same group crossing the partition boundary.
+
+\subsection{Text-classification baselines}
+The text was vectorized using TF--IDF \citep{sparckjones1972statistical} with at most 20,000 features, unigram and bigram features, and minimum document frequency of two. Two classifiers were fitted: Logistic Regression and a Linear SVM \citep{cortes1995support}. The reported metrics are accuracy, precision, recall, F1-score, AUROC and area under the precision--recall curve (AUPRC). Precision and recall treat hallucinated answers (label 1) as the positive class. Fit time is recorded as a descriptive runtime measurement and is environment-dependent.
+
+\subsection{GPT-2 conditional candidate-answer likelihood}
+GPT-2 \citep{radford2019language} (checkpoint \texttt{gpt2}) was used to score the supplied right and hallucinated answers conditioned on the knowledge and question in a prompt of the form \texttt{Knowledge: ... Question: ... Answer:}. The score is the negative mean log-probability of the answer tokens; larger values would conventionally be interpreted as less likely text and hence a possible uncertainty signal. The experiment evaluated the first 100 sampled pairs, giving 200 candidate-answer instances.
+
+For the corrected scoring export, a fast tokenizer's character offsets were used to select tokens whose spans overlap the answer portion of the concatenated prompt. In a causal language model, token position $j$ is scored by the distribution at position $j-1$. The notebook export records the number of selected answer tokens and the resulting mean log-probability. The score direction was evaluated both as originally hypothesized and reversed. This is candidate-answer scoring, not an experiment in which GPT-2 generates its own answers. It is not semantic entropy, and likelihood alone cannot establish truth or falsity.
+
+\section{Experimental Setup and Reproducibility}
+The executed notebook reports Python 3.13.16, PyTorch 2.11.0+cpu, scikit-learn 1.6.1 \citep{pedregosa2011scikit} and Transformers 5.20.1 \citep{wolf2020transformers}. The runtime was CPU-based, with CUDA unavailable. CPU execution is suitable for TF--IDF and the small GPT-2 scoring sample, although the language-model step may be slower than on a GPU. The dataset sample and group split use seed 42. The classifier evaluation uses one split; no repeated seeds, bootstrap confidence intervals or significance tests were run. The supplied candidate answers are taken from HaluEval, and the GPT-2 evaluation is restricted to 100 pairs for computational economy.
+
+The repository includes the executed notebook, the uploaded result CSVs, corrected likelihood CSVs, confusion-matrix figures, environment requirements and a README describing how to obtain the data and rerun the workflow. Raw dataset files are not redistributed. Results should be considered run-specific because library versions, tokenization behavior and hardware can affect execution time and, in some settings, numerical outputs.
+
+\section{Results}
+\subsection{Text-classification baselines}
+Table~\ref{tab:baselines} reports the metrics exported from the uploaded experiment run. Logistic Regression attained higher recall and F1, while Linear SVM attained higher accuracy, precision, AUROC and AUPRC. Differences are modest and are descriptive for one split only.
+\begin{table}[t]
+\centering
+\caption{Text-classification results from the uploaded run. Positive class: hallucinated answer.}
+\label{tab:baselines}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Model & Acc. & Prec. & Recall & F1 & AUROC & AUPRC & Fit (s)\\
+\midrule
+TF--IDF + Logistic Regression & 0.6300 & 0.6429 & 0.5850 & 0.6126 & 0.6862 & 0.6876 & 0.79\\
+TF--IDF + Linear SVM & 0.6375 & 0.6708 & 0.5400 & 0.5983 & 0.7009 & 0.7059 & 0.71\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Linear SVM has the stronger ranking metrics (AUROC and AUPRC), suggesting somewhat better ordering of positive and negative examples under the model's score. Logistic Regression has higher recall and F1 at the reported decision threshold. The difference illustrates why model selection depends on the objective: a detector that prioritizes catching hallucinations may value recall differently from one that prioritizes precision. The results do not demonstrate a statistically reliable advantage for either classifier.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.48\linewidth]{figures/tf_idf_plus_logistic_regression_confusion.png}\hfill
+\includegraphics[width=0.48\linewidth]{figures/tf_idf_plus_linear_svm_confusion.png}
+\caption{Confusion matrices for the two TF--IDF classifiers. Positive class is the hallucinated answer.}
+\label{fig:confusion}
+\end{figure}
+
+\subsection{GPT-2 likelihood}
+Table~\ref{tab:likelihood} presents the corrected likelihood metrics from the character-offset export. In the hypothesized direction, AUROC is 0.4437 and AUPRC is 0.4380. Reversing the score gives AUROC 0.5563 and AUPRC 0.5023. The reversed score is only weakly discriminative and does not establish that lower likelihood means hallucination. The balanced 200-instance evaluation has a baseline precision--recall average-precision reference near 0.5, so the reversed AUPRC is close to that baseline.
+\begin{table}[t]
+\centering
+\caption{GPT-2 negative mean answer-token log-probability.}
+\label{tab:likelihood}
+\begin{tabular}{lrr}
+\toprule
+Score direction & AUROC & AUPRC\\
+\midrule
+Original (higher = more suspicious) & 0.4437 & 0.4380\\
+Reversed & 0.5563 & 0.5023\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The corrected score summary is reported in the accompanying CSV rather than copied from the earlier likelihood export, because the initial and corrected exports use different token-selection implementations. The corrected metrics are the values used in this manuscript. Even with answer-token selection, a likelihood score remains a measure of model preference for a token sequence under the prompt, not a direct assessment of whether the answer is supported by the knowledge.
+
+\subsection{Comparison of the three models}
+Table~\ref{tab:comparison} places the three evaluated models side by side using only the values already reported in Tables~\ref{tab:baselines} and~\ref{tab:likelihood}. The classifiers are scored on the 400 held-out instances of the grouped split (see the confusion matrices in Figure~\ref{fig:confusion}), whereas the GPT-2 score is evaluated on 200 candidate answers. The two evaluation sets differ, so the comparison is descriptive rather than a controlled test. A dash (--) marks a metric that was not computed: the GPT-2 likelihood is a continuous score, and no decision threshold was applied to it.
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Side-by-side comparison of the three models. Positive class: hallucinated answer. Bold marks the best value in each column among the values reported.}
+\label{tab:comparison}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Model & Eval. $n$ & Acc. & Prec. & Recall & F1 & AUROC & AUPRC\\
+\midrule
+TF--IDF + Logistic Regression & 400 & 0.6300 & 0.6429 & \textbf{0.5850} & \textbf{0.6126} & 0.6862 & 0.6876\\
+TF--IDF + Linear SVM & 400 & \textbf{0.6375} & \textbf{0.6708} & 0.5400 & 0.5983 & \textbf{0.7009} & \textbf{0.7059}\\
+GPT-2 likelihood (original direction) & 200 & -- & -- & -- & -- & 0.4437 & 0.4380\\
+GPT-2 likelihood (reversed) & 200 & -- & -- & -- & -- & 0.5563 & 0.5023\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/model_comparison_bar.png}
+\caption{AUROC and AUPRC of the three models, using the values in Table~\ref{tab:comparison}. GPT-2 is shown in the hypothesized direction; the reversed score gives AUROC 0.5563 and AUPRC 0.5023. TF--IDF with Linear SVM is highest on both metrics.}
+\label{fig:barcomparison}
+\end{figure}
+
+\paragraph{Which model is best?}
+Among the three, TF--IDF with Linear SVM is the best performer in this study, as Figure~\ref{fig:barcomparison} also shows. It has the highest accuracy (0.6375), precision (0.6708), AUROC (0.7009) and AUPRC (0.7059). TF--IDF with Logistic Regression is a close second, with the highest recall (0.5850) and F1 (0.6126), so it would be preferred if catching more hallucinated answers matters more than precision. The GPT-2 likelihood score is the weakest: its AUROC of 0.4437 in the hypothesized direction is below chance, and the reversed value of 0.5563 is close to chance. These conclusions are limited to this sample, which uses one split and no significance tests. The margin between the two classifiers is small, and the GPT-2 comparison is made on a smaller and different evaluation set.
+
+\section{Error Analysis and Discussion}
+The classifier predictions and error-analysis CSVs are encompassed in the store so that examples can be inspected rather than counting only on accumulate metrics. Any false positive is one more right answer flagged as hallucinated; the false negative is one hallucinated answer forecasted as right. In light of this dynamic, diverse concrete effects are had by these two error types, so a false positive may unnecessarily reject a correct answer. A false negative is allowing an incorrect answer to pass the detector. All these categories are labeled by the exported investigation and preserves the source question, knowledge and answer for manual inspection.
+
+The reasonable classifier scores are suggesting that surface text and context contain signals associated with the benchmark labels, on the whole. Still major deviation is left by this scores. Taken together, still lexical patterns, answer length, phrasing or benchmark-generation artifacts may be learned by the model; this is a credible explanation rather than a showed causal account; spotting such artifacts would need a dedicated assessment, such as controlling answer length or testing on a separate dataset, in real-world scenarios. Per-category error examples and test would also be reported by a stronger trial whether findings maintain, across the multiple random seeds.
+
+GPT-2 likelihood is executing poorly in the projected direction; this is systematically uniform with the conceptual shortcoming that a language model can designate high probability to familiar but incorrect wording and low probability to an unusual correct answer, broadly speaking. Prompt format, truncation, tokenization, the small sample and the construction of candidate answers may all matter, in many respects. The reversed direction's AUROC of 0.5563 is principally close to chance and should not be supplied as a advantageous detector. Viewed through this lens, still the current trial does not isolate why the score crashes.
+
+\section{Threats to Validity and Limitations}
+Reading is limited by several shortcomings. Fourth, the input is combining knowledge and question, so the classifier can use wording regularities and is not necessarily running evidence-grounded fact checking, to a significant degree; indeed, third, HaluEval's benchmark labels and paired construction may, in practice, introduce artifacts that are not representative of naturally (or to be precise) emerging hallucinations, in actual application. Under these conditions, first, the classifier results apply a single group-based split, so assessments may be sensitive to which groups are held out; variability would better be quantified by repeated splits or cross-validation; in turn, second, the GPT-2 experiment is encompassing only 100 pairs, which is making the ranking projections uncertain.
+
+Fifth, conditional token likelihood measures the probability of wording, not factuality; in turn, also, the score is sensitive to the prompt template, tokenization and truncation, broadly speaking; in fact, sixth, this project did not execute semantic entropy, sample multiple generations, cluster semantic equivalence classes, adjust probabilities, or test, broadly speaking. From this perspective, finally, no external held-out dataset was applied; these shortcomings mean the findings should be read as exploratory proof on a particular benchmark subset, not as a broad claim about LLM hallucination detection.
+
+\section{Conclusion and Future Work}
+This study compared TF--IDF with Logistic Regression, TF--IDF with Linear SVM, and GPT-2 conditional candidate-answer likelihood on a small HaluEval QA sample. Linear SVM had the highest accuracy (0.6375), AUROC (0.7009) and AUPRC (0.7059), while Logistic Regression had higher recall and F1 at the selected threshold. Both classifiers showed modest discrimination, and Linear SVM was the best of the three models overall on accuracy, precision and the ranking metrics. The corrected GPT-2 likelihood score had AUROC 0.4437 in the hypothesized direction and 0.5563 when reversed, providing little evidence that the score alone separates the two answer types.
+
+Future work should use repeated group splits and confidence intervals, increase the likelihood sample, inspect error categories systematically, and evaluate on an independent dataset. A more faithful comparison with semantic uncertainty would require multiple generated answers and semantic-equivalence clustering. Claiming such a method as implemented would be inaccurate for this study. The main conclusion is therefore methodological: inexpensive lexical baselines provide a useful reference, while a single conditional-likelihood score is not sufficient to establish factual reliability in this experiment.
+
+\section*{Research Integrity Note}
+All numerical results in this manuscript are tied to the uploaded experiment CSVs. The corrected likelihood CSVs are preserved separately from the initial export so the analysis history remains visible. No confidence intervals, significance tests, or unrun experiments are claimed. Before submission, the author should verify all bibliographic metadata against the cited primary sources and ensure the course's AI-use disclosure requirements are met.
+
+\bibliography{references}
+
+\end{document}
